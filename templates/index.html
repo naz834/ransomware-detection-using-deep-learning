@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ransomware Detection Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            text-align: center;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+        }
+        #chart {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        #logs {
+            background-color: #1e1e1e;
+            padding: 10px;
+            height: 250px;
+            overflow-y: scroll;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        .log-entry {
+            padding: 5px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .benign {
+            background-color: #2E8B57;
+        }
+        .ransomware {
+            background-color: #B22222;
+        }
+        .status-bar {
+            padding: 10px;
+            font-size: 1.2em;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .benign-status {
+            background-color: #2E8B57;
+        }
+        .ransomware-status {
+            background-color: #B22222;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Ransomware Detection Dashboard</h1>
+
+        <div id="status-bar" class="status-bar benign-status">🟢 System Secure</div>
+
+        <div id="chart"></div>
+
+        <h2>📜 Detection Logs</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        var socket = io();
+        var timestamps = [];
+        var statuses = [];
+        var colors = [];
+        var chartData = [];
+
+        socket.on("new_detection", function(data) {
+            // Update logs
+            var logDiv = document.getElementById("logs");
+            var newEntry = document.createElement("p");
+            newEntry.textContent = data.time + " - " + data.status;
+            newEntry.classList.add("log-entry", data.status.includes("Ransomware") ? "ransomware" : "benign");
+            logDiv.appendChild(newEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;  // Auto-scroll
+
+            // Update status bar
+            var statusBar = document.getElementById("status-bar");
+            if (data.status.includes("Ransomware")) {
+                statusBar.textContent = "🔴 Ransomware Detected!";
+                statusBar.classList.remove("benign-status");
+                statusBar.classList.add("ransomware-status");
+            } else {
+                statusBar.textContent = "🟢 System Secure";
+                statusBar.classList.remove("ransomware-status");
+                statusBar.classList.add("benign-status");
+            }
+
+            // Update graph
+            timestamps.push(data.time);
+            statuses.push(data.status.includes("Ransomware") ? 1 : 0);
+            colors.push(data.status.includes("Ransomware") ? "red" : "green");
+
+            var trace = {
+                x: timestamps,
+                y: statuses,
+                mode: "lines+markers",
+                marker: { color: colors },
+                type: "scatter"
+            };
+
+            var layout = {
+                title: "Live Ransomware Detection",
+                xaxis: { title: "Time" },
+                yaxis: { title: "Status (0=Benign, 1=Ransomware)", range: [0, 1.2] },
+                plot_bgcolor: "#1e1e1e",
+                paper_bgcolor: "#1e1e1e",
+                font: { color: "white" }
+            };
+
+            Plotly.newPlot("chart", [trace], layout);
+        });
+    </script>
+</body>
+</html>
